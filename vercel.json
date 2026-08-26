@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/minecraft", "destination": "/minecraft/index.html" },
+    { "source": "/minecraft/(.*)", "destination": "/minecraft/index.html" },
+    { "source": "/factorio", "destination": "/factorio/index.html" },
+    { "source": "/factorio/(.*)", "destination": "/factorio/index.html" }
+  ]
+}
