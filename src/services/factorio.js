@@ -12,9 +12,19 @@ export async function factorioFetch(url, useProxy = true, proxy = PROXY) {
     const target = useProxy && base
         ? `${base}/fetch?url=${encodeURIComponent(url)}`
         : url;
-    const response = await fetch(target);
-    if (!response.ok) throw Error(`HTTP ${response.status}`);
-    return response;
+    try {
+        const response = await fetch(target, { cache: "no-store" });
+        if (!response.ok) throw Error(`HTTP ${response.status}`);
+        return response;
+    } catch (error) {
+        if (!useProxy || !base || error instanceof Error && error.message.startsWith("HTTP ")) {
+            throw error;
+        }
+        const retryUrl = `${target}${target.includes("?") ? "&" : "?"}cacheBust=${Date.now()}`;
+        const response = await fetch(retryUrl, { cache: "reload" });
+        if (!response.ok) throw Error(`HTTP ${response.status}`);
+        return response;
+    }
 }
 
 function absoluteUrl(value) {
