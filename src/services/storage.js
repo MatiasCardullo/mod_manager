@@ -62,6 +62,25 @@ export function write(key, value) {
     memoryStorage.set(key, JSON.stringify(value));
   }
 }
+
+export function saveCartProfile(name, cart) {
+  const profile = {
+    format: "iara-mod-manager-cart",
+    version: 1,
+    name: String(name || "cart"),
+    savedAt: new Date().toISOString(),
+    items: normalizeCart(cart),
+  };
+  downloadJson(`${profile.name.replace(/[^\w.-]+/g, "_")}.json`, profile);
+}
+
+export function parseCartProfile(text) {
+  const parsed = JSON.parse(text);
+  const items = Array.isArray(parsed) ? parsed : parsed?.items;
+  if (!Array.isArray(items)) throw new Error("Invalid cart profile: items missing");
+  return normalizeCart(items);
+}
+
 export function downloadJson(name, value) {
   const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
   const link = document.createElement("a");

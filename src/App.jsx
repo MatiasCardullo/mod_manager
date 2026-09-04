@@ -3,8 +3,9 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import ModCard from "./components/ModCard";
 import VersionPickerModal from "./components/VersionPickerModal";
-import { loadModrinthTags } from "./services/modrinth";
+import { getModrinthOptions, loadModrinthTags } from "./services/modrinth";
 import { normalizeCart, readCompatible, write } from "./services/storage";
+import { getFactorioModInfo, selectFactorioRelease } from "./services/factorio";
 import { cloneDefaults, GAME_CONFIG } from "./config/games";
 
 function Manager({ game }) {
@@ -98,15 +99,42 @@ function Manager({ game }) {
       setCart((current) => {
         const next = [...current];
         additions.forEach((addition) => {
-          if (!next.some((existing) =>
-            existing.modId === addition.modId && existing.version === addition.version
-          )) next.push(addition);
+          const sameMod = next.findIndex((existing) => existing.modId === addition.modId);
+          if (sameMod < 0) next.push(addition);
+          else if (next[sameMod].version !== addition.version &&
+            window.confirm(`${addition.modId} already has another version. Replace it?`)) {
+            next[sameMod] = addition;
+          }
         });
         return next;
       });
       setStatus(`Added ${additions.length} item(s).`);
     } catch (error) {
       setStatus(error.message);
+    }
+  };
+
+  const replace = async (item) => {
+    try {
+      let option;
+      if (game === "minecraft") {
+        const options = await getModrinthOptions(item.modId, settings);
+        option = await chooseVersion(item.modId, options);
+      } else {
+        const info = await getFactorioModInfo(item.modId);
+        const release = selectFactorioRelease(info, filters.targetVersion, null, settings.componentVersions);
+        if (release?.version) option = { version: release.version, url: `${item.url.split("/").slice(0, -1).join("/")}/${release.version}.zip`, filename: `${item.modId}_${release.version}.zip` };
+      }
+      if (!option) return;
+      setCart((current) => current.map((entry) => entry.modId === item.modId ? {
+        ...entry,
+        version: option.version || option.id,
+        title: option.filename || `${item.modId}_${option.version}.zip`,
+        url: option.url,
+      } : entry));
+      setStatus(`Replaced ${item.modId} version.`);
+    } catch (error) {
+      setStatus(`Version replacement error: ${error.message}`);
     }
   };
 
@@ -121,7 +149,10 @@ function Manager({ game }) {
     };
     setFilters(nextFilters);
     setSettings(nextSettings);
-    if (!config.repairLog || (!logData.dependencies?.length && !logData.replacementMods?.length)) return;
+    if (!config.repairLog || (!logData.dependencies?.length && !logData.replacementMods?.length)) {
+      setStatus("No missing or incompatible dependencies found in log.");
+      return;
+    }
     setStatus("Resolving dependencies from factorio-current.log…");
     try {
       const additions = await config.repairLog(logData, nextFilters, nextSettings);
@@ -163,6 +194,8 @@ function Manager({ game }) {
       setSettings={setSettings}
       onFactorioVersion={(version) => setFilters((current) => ({ ...current, targetVersion: version }))}
       onFactorioLog={onFactorioLog}
+      onReplace={replace}
+      onStatus={setStatus}
       query={query}
       setQuery={setQuery}
     >
@@ -199,8 +232,8 @@ function Manager({ game }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/minecraft/*" element={<Manager game="minecraft" />} />
-      <Route path="/factorio/*" element={<Manager game="factorio" />} />
+      <Route path="/minecraft/*" element={<Manager key="minecraft" game="minecraft" />} />
+      <Route path="/factorio/*" element={<Manager key="factorio" game="factorio" />} />
       <Route path="*" element={<Navigate to="/minecraft" replace />} />
     </Routes>
   );

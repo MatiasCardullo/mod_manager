@@ -9,18 +9,20 @@ export const proxyUrl = PROXY;
 
 export async function factorioFetch(url, useProxy = true, proxy = PROXY) {
     const base = String(proxy || "").trim().replace(/\/+$/, "");
+    const cacheBust = `iara=${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const upstream = `${url}${url.includes("?") ? "&" : "?"}${cacheBust}`;
     const target = useProxy && base
-        ? `${base}/fetch?url=${encodeURIComponent(url)}`
-        : url;
+        ? `${base}/fetch?url=${encodeURIComponent(upstream)}`
+        : upstream;
     try {
         const response = await fetch(target, { cache: "no-store" });
         if (!response.ok) throw Error(`HTTP ${response.status}`);
         return response;
     } catch (error) {
-        if (!useProxy || !base || error instanceof Error && error.message.startsWith("HTTP ")) {
+        if (!useProxy || !base) {
             throw error;
         }
-        const retryUrl = `${target}${target.includes("?") ? "&" : "?"}cacheBust=${Date.now()}`;
+        const retryUrl = `${base}/fetch?url=${encodeURIComponent(`${url}${url.includes("?") ? "&" : "?"}${cacheBust}-retry`)}`;
         const response = await fetch(retryUrl, { cache: "reload" });
         if (!response.ok) throw Error(`HTTP ${response.status}`);
         return response;

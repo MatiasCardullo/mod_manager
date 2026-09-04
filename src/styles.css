@@ -797,6 +797,17 @@ button {
   gap: 8px;
 }
 
+.cart-profile-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.cart-profile-actions .btn {
+  font-size: 10px;
+  padding: 8px 4px;
+}
+
 .drawer-footer .btn {
   width: 100%;
   padding: 10px;

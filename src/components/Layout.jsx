@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { downloadJson, write } from "../services/storage";
+import { downloadJson, parseCartProfile, saveCartProfile, write } from "../services/storage";
 import { GAME_CONFIG } from "../config/games";
 import { SearchControls, FilterSidebar } from "./Controls";
 import CartDrawer from "./CartDrawer";
@@ -18,6 +18,9 @@ export default function Layout({
     setSettings,
     onFactorioVersion,
     onFactorioLog,
+    onReplace,
+    onCartChange,
+    onStatus,
     query,
     setQuery,
     gameConfig,
@@ -37,6 +40,28 @@ export default function Layout({
     const updateCart = (next) => {
         setCart(next);
         write(config.storage.cart, next);
+        onCartChange?.(next);
+    };
+    const saveProfile = () => {
+        const name = window.prompt("Cart profile name", `${game}-cart`);
+        if (name?.trim()) saveCartProfile(name.trim(), cart);
+    };
+    const loadProfile = () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json,application/json";
+        input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            try {
+                const loaded = parseCartProfile(await file.text());
+                updateCart(loaded);
+                onStatus?.(`Loaded ${loaded.length} cart item(s).`);
+            } catch (error) {
+                onStatus?.(error.message);
+            }
+        };
+        input.click();
     };
     const download = (item) => {
         const link = document.createElement("a");
@@ -117,6 +142,12 @@ export default function Layout({
                 onSendToDownloader={sendToDownloader}
                 onDownload={download}
                 onDownloadAll={() => cart.forEach(download)}
+                onClear={() => {
+                    if (window.confirm("Clear all cart items?")) updateCart([]);
+                }}
+                onSaveProfile={saveProfile}
+                onLoadProfile={loadProfile}
+                onReplace={onReplace}
             />
             <SettingsModal
                 open={settingsOpen}

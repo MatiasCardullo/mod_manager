@@ -9,6 +9,10 @@ export default function CartDrawer({
     onSendToDownloader,
     onDownloadAll,
     onDownload,
+    onClear,
+    onSaveProfile,
+    onLoadProfile,
+    onReplace,
 }) {
     if (!open) return null;
     return (
@@ -45,6 +49,14 @@ export default function CartDrawer({
                                             </button>
                                             <button
                                                 type="button"
+                                                className="cart-item-download"
+                                                onClick={() => onReplace(item)}
+                                                title="Choose another version"
+                                            >
+                                                ↻
+                                            </button>
+                                            <button
+                                                type="button"
                                                 className="cart-remove"
                                                 onClick={() => onRemove(index)}
                                                 title="Remove"
@@ -59,6 +71,11 @@ export default function CartDrawer({
                     )}
                 </div>
                 <div className="drawer-footer">
+                    <div className="cart-profile-actions">
+                        <button type="button" className="btn" onClick={onSaveProfile} disabled={!items.length}>Save profile</button>
+                        <button type="button" className="btn" onClick={onLoadProfile}>Load profile</button>
+                        <button type="button" className="btn" onClick={onClear} disabled={!items.length}>Clear</button>
+                    </div>
                     <button type="button" className="btn btn-primary" onClick={onSendToDownloader} disabled={!items.length}>
                         Send to IARA Downloader
                     </button>

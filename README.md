@@ -1,103 +1,107 @@
 # IARA Mod Manager
 
-`Downloader/mod_manager` is a Vite + React application. Shared layout, controls,
-cart, settings, and storage code lives under `src/components/`, `src/helpers/`, and
-`src/services/`; game adapters live in `src/config/games.js` and the game services.
+`mod_manager` es una aplicación Vite + React. El layout compartido, los
+controles, el carrito, la configuración y el almacenamiento viven en
+`src/components/`, `src/helpers/` y `src/services/`; los adaptadores por juego
+debajo de `src/config/games.js` y los servicios del juego.
 
-## Routes
+## Rutas
 
-- `/minecraft` searches the public Modrinth API. It supports popular/updated/
-  newest sorting, loader/version/category filters, version and file selection,
-  required dependency resolution, a persistent cart, direct browser downloads,
-  JSON export, and the optional Downloader handoff.
-- `/factorio` reads Mod Portal listings through a configurable CORS proxy,
-  obtains mod metadata and dependencies from `re146.dev`, and downloads files
-  from `mods-storage.re146.dev`. It supports updated/downloaded/trending
-  listings, Factorio version/expansion/category/tag filters, dependency
-  resolution, cart/export/download actions, and optional
-  `factorio-current.log` upload for version and dependency repair.
+- `/minecraft` busca en la API pública de Modrinth. Soporta ordenamiento por
+  popular/updated/newest, filtros de loader/version/category, selección de
+  versión y archivo, resolución de dependencias requeridas, carrito persistente,
+  descargas directas desde el navegador, exportación JSON y el handoff opcional
+  al Downloader.
+- `/factorio` lee listados de Mod Portal a través del proxy CORS integrado,
+  obtiene metadatos y dependencias desde `re146.dev` y descarga archivos desde
+  `mods-storage.re146.dev`. Soporta listados por updated/downloaded/trending,
+  filtros de versión/expansión/categoría/tag de Factorio, resolución de
+  dependencias, acciones de carrito/exportación/descarga y carga opcional de
+  `factorio-current.log` para reparar versión y dependencias.
 
-## Development and build
+El carrito permite quitar elementos, reemplazar versiones, detectar conflictos
+al agregar, vaciar contenido y guardar/cargar perfiles JSON. Perfiles incluyen
+`format`, `version`, `savedAt` e `items`; se normalizan al cargarlos y mantienen
+compatibilidad con formato usado por Downloader. Reparación Factorio acepta
+`factorio-current.log` mediante selector de archivo, detecta versión y
+componentes, y agrega dependencias faltantes al carrito. Wrapper de escritorio
+puede sustituir selector por bridge nativo sin cambiar servicios.
 
-Run commands from `Downloader/mod_manager`:
+## Desarrollo y build
+
+Se corre desde la raíz del proyecto (`IARA/mod_manager`):
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open `http://localhost:5173/minecraft` or
-`http://localhost:5173/factorio`. Create the production bundle with:
+Abre `http://localhost:5173/minecraft` o
+`http://localhost:5173/factorio`. Genera el bundle de producción con:
 
 ```bash
 npm run build
 npm run preview
 ```
 
-Publish `dist/` to a static host. Vite creates
-`dist/minecraft/index.html` and `dist/factorio/index.html` route fallbacks,
-uses relative asset paths, and keeps direct route navigation/refresh working
-on hosts that serve directory indexes. `vercel.json` provides equivalent
-rewrites for Vercel. No server-side React runtime is required.
+Publica `dist/` en un host estático. Vite crea
+`dist/minecraft/index.html` y `dist/factorio/index.html` como fallbacks de
+ruta, usa paths relativos y mantiene el refresco directo y la navegación por
+rutas en hosts que sirvan índices de directorio. `vercel.json` entrega
+rewrites equivalentes para Vercel. No hace falta runtime de React en servidor.
 
-## Proxy configuration
+## Proxy de Factorio
 
-Proxy settings are per game and saved in browser storage:
+Factorio usa proxy CORS integrado
+`https://factoriomods.supermaty97.workers.dev` porque Mod Portal normalmente
+no se puede consultar cross-origin. Proxy no aparece en Settings ni se guarda
+en almacenamiento del navegador. Cada consulta agrega cache-busting al URL
+upstream para evitar respuestas 404 obsoletas al cambiar entre juegos o modos.
 
-- Minecraft uses Modrinth directly by default. Its proxy is optional; the
-  default field value is `http://localhost:8787`.
-- Factorio uses the deployed
-  `https://factoriomods.supermaty97.workers.dev` proxy by default because
-  Mod Portal pages normally cannot be fetched cross-origin. Disable it only
-  when the selected endpoints provide suitable CORS headers.
+## Almacenamiento del navegador y migración
 
-The app requests `<proxy>/fetch?url=<encoded upstream URL>`. A replacement
-must expose that endpoint, return upstream content/status, and send CORS
-headers. Use a trusted proxy; the app sends requested upstream URLs to it.
-
-## Browser storage and migration
-
-Settings and carts are stored per browser origin in `localStorage`.
-Canonical keys are:
+Settings y carritos se guardan por origen del navegador en `localStorage`.
+Las claves canónicas son:
 
 - Minecraft: `modrinthSearchSettings`, `modrinthSearchCart`
 - Factorio: `modSearchSettings`, `modSearchCart`
 
-The React app also reads older aliases
-(`minecraftModSettings`/`minecraftModCart` and
-`factorioModSettings`/`factorioModCart`). Cart records are normalized across
-older field names such as `mod_id`, `projectId`, `version_id`,
-`download_url`, and `filename`, then written to the canonical key. Legacy keys
-are not deleted. Storage does not transfer between different hosts, ports, or
-browser profiles.
+La app React también lee aliases viejos
+(`minecraftModSettings`/`minecraftModCart` y
+`factorioModSettings`/`factorioModCart`). Los registros del carrito se
+normalizan entre nombres antiguos como `mod_id`, `projectId`, `version_id`,
+`download_url` y `filename`, y luego se escriben en la clave canónica. Las
+claves viejas no se eliminan. El almacenamiento no se comparte entre hosts,
+puertos o perfiles de navegador distintos.
 
-## Downloader handoff
+## Handoff al Downloader
 
-`Send to IARA Downloader` maps each cart item to:
+`Send to IARA Downloader` transforma cada elemento del carrito en:
 
 ```json
 {"url":"…","path":"…","password":"","title":"…"}
 ```
 
-It JSON-serializes the list, UTF-8 base64url-encodes it, and navigates to:
+Serializa la lista en JSON, la codifica en base64url UTF-8 y navega a:
 
 ```text
 iara-downloads://add-mods?payload=<base64url-json>
 ```
 
-This URI only works when an operating-system protocol handler is registered
-and a receiver decodes the payload. This repository currently provides the
-URI generation but no protocol registration/receiver, so the reliable
-fallback is `Export JSON`, followed by:
+Esta URI requiere el protocol handler Windows empaquetado por
+`installer/`, que decodifica el payload y abre el Downloader. El fallback
+confiable sigue siendo
+`Export JSON`, seguido por:
 
 ```bash
 python download_manager.py modrinth_cart.json
 python download_manager.py mod_search_cart.json
 ```
 
-The cart also supports direct browser downloads without Downloader.
+El carrito también soporta descargas directas desde el navegador sin el
+Downloader.
 
-## Project scope
+## Alcance del proyecto
 
-The canonical implementation is the React app under `src/`. Older static
-Minecraft and Factorio pages are not included in this repository.
+La implementación canónica es la app React bajo `src/`. Las viejas páginas
+estáticas de Minecraft y Factorio no están incluidas en este repositorio.

@@ -40,31 +40,6 @@ export default function SettingsModal({
                         <span className="field-help">Saved in this browser. Used as path in exported Downloader entries.</span>
                     </div>
                     <>
-                        <div className="toggle-row">
-                            <div>
-                                <label>Use CORS proxy</label>
-                                <span className="field-help">
-                                    {isFactorio ? "Needed for Factorio Mod Portal search." : "Optional local proxy for API requests."}
-                                </span>
-                            </div>
-                            <label className="switch">
-                                <input
-                                    type="checkbox"
-                                    checked={draft.useProxy !== false}
-                                    onChange={(event) => update("useProxy", event.target.checked)}
-                                />
-                                <span className="switch-track" />
-                            </label>
-                        </div>
-                        <div className="field">
-                            <label htmlFor="proxy-base">Proxy URL</label>
-                            <input
-                                id="proxy-base"
-                                value={draft.proxyBase || ""}
-                                onChange={(event) => update("proxyBase", event.target.value)}
-                                placeholder={isFactorio ? "https://factoriomods.supermaty97.workers.dev" : "http://localhost:8787"}
-                            />
-                        </div>
                         {isFactorio && (
                             <div className="field">
                                 <label htmlFor="factorio-log">factorio-current.log (optional)</label>
